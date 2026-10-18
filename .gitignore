@@ -1,0 +1,110 @@
+# ============================================================
+# Unity generated / cache
+# ============================================================
+
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+
+# ============================================================
+# IDE generated files
+# ============================================================
+
+# Visual Studio
+.vs/
+
+*.csproj
+*.sln
+*.slnx
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Rider
+.idea/
+*.DotSettings.user
+
+# VS Code
+.vscode/
+
+
+# ============================================================
+# Unity generated debug files
+# ============================================================
+
+*.pidb
+*.pdb
+*.mdb
+
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+sysinfo.txt
+mono_crash.*
+
+
+# ============================================================
+# Build output
+# ============================================================
+
+/[Bb]uild/
+/[Bb]uilds/
+
+
+# ============================================================
+# FMOD generated/cache data
+# ============================================================
+
+/FMOD_2024/.cache/
+/FMOD_2024/.user/
+/FMOD_2024/.restore/
+
+# FMOD Editor cache
+/[Aa]ssets/Plugins/FMOD/Cache/
+/[Aa]ssets/Plugins/FMOD/Resources/FMODStudioCache.asset
+/[Aa]ssets/Plugins/FMOD/Resources/FMODStudioCache.asset.meta
+
+fmod_editor.log
+
+
+# ============================================================
+# OS generated
+# ============================================================
+
+# Windows
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# macOS
+.DS_Store
+._*
+
+
+# ============================================================
+# Temporary / backup
+# ============================================================
+
+*.tmp
+*.temp
+*.bak
+*.backup
+*.orig
+*.swp
+*.swo
+
+
+# ============================================================
+# Explicitly keep
+# ============================================================
+
+!/PublicKey.txt
+!/.vsconfig

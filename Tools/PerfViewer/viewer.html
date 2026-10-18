@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PerfViewer</title>
+<style>
+:root {
+  --bg: #f6f8fa; --panel: #ffffff; --text: #1f2328; --muted: #656d76; --border: #d0d7de; --grid: #e6e9ed;
+  --accent: #2563eb; --warn: #9a6700; --warn-bg: #fff8c5; --err: #b91c1c; --err-bg: #ffe4e6; --ok: #15803d;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #8b949e; --border: #30363d; --grid: #262c35;
+    --accent: #58a6ff; --warn: #e3b341; --warn-bg: #3a2f0b; --err: #ff7b72; --err-bg: #3d1618; --ok: #56d364;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); }
+body { font: 14px/1.5 system-ui, "Yu Gothic UI", "Meiryo", sans-serif; font-variant-numeric: tabular-nums; }
+header { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 16px; background: var(--panel); border-bottom: 1px solid var(--border); }
+header h1 { margin: 0; font-size: 16px; }
+.spacer { flex: 1; }
+.muted { color: var(--muted); }
+.pill { padding: 1px 8px; border-radius: 999px; font-size: 12px; border: 1px solid var(--border); white-space: nowrap; }
+.pill.ok { color: var(--ok); border-color: var(--ok); }
+.pill.err { color: var(--err); border-color: var(--err); background: var(--err-bg); }
+.pill.warn { color: var(--warn); border-color: var(--warn); background: var(--warn-bg); }
+button { font: inherit; white-space: nowrap; padding: 3px 10px; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; cursor: pointer; }
+button:hover { border-color: var(--accent); }
+select { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 2px 6px; }
+.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 16px; padding: 16px; align-items: start; }
+aside section { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+aside h2 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+.run { display: flex; gap: 8px; align-items: flex-start; padding: 5px 4px; border-radius: 6px; cursor: pointer; }
+.run:hover { background: var(--bg); }
+.run input { margin-top: 4px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; margin-top: 4px; flex: none; }
+.rname { font-weight: 600; word-break: break-all; }
+.rsub { font-size: 12px; color: var(--muted); }
+.live { color: var(--ok); font-weight: 600; }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+.row label { display: flex; align-items: center; gap: 6px; }
+.hint { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+.warnitem { font-size: 13px; padding: 3px 0; border-top: 1px solid var(--border); }
+.warnitem:first-child { border-top: 0; }
+.tag { display: inline-block; padding: 0 6px; border-radius: 4px; font-size: 12px; margin-right: 4px; }
+.tag.err { color: var(--err); background: var(--err-bg); }
+.tag.warn { color: var(--warn); background: var(--warn-bg); }
+.tag.info { color: var(--muted); background: var(--bg); border: 1px solid var(--border); }
+table.meta { border-collapse: collapse; width: 100%; font-size: 12px; margin-top: 6px; }
+table.meta th, table.meta td { text-align: left; padding: 2px 6px; border-top: 1px solid var(--border); vertical-align: top; word-break: break-all; }
+table.meta tr.diff td, table.meta tr.diff th { background: var(--warn-bg); }
+details > summary { cursor: pointer; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 8px; margin-top: 6px; }
+.cols label { display: flex; gap: 6px; align-items: center; font-size: 12px; }
+main h3 { margin: 18px 0 8px; font-size: 14px; color: var(--muted); }
+main h3:first-child { margin-top: 0; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 12px; }
+.chart { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px 6px; min-width: 0; }
+.chart.has-err { border-color: var(--err); }
+.chart.has-warn { border-color: var(--warn); }
+.chart-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.ctitle { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chart-head button { padding: 0 8px; font-size: 12px; }
+.cwrap { position: relative; height: 190px; }
+.cwrap canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+.cwrap canvas.over { cursor: crosshair; }
+.legend { display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12px; min-height: 20px; margin-top: 4px; }
+.lg { white-space: nowrap; }
+.lg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; }
+.lg em { font-style: normal; color: var(--muted); margin-left: 6px; }
+.empty { padding: 40px 16px; text-align: center; color: var(--muted); background: var(--panel); border: 1px dashed var(--border); border-radius: 8px; }
+.hidden { display: none !important; }
+@media (max-width: 960px) {
+  .layout { grid-template-columns: 1fr; }
+  .grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <h1>PerfViewer</h1>
+  <span id="conn" class="pill">接続中…</span>
+  <span id="updated" class="muted"></span>
+  <div class="spacer"></div>
+  <button id="btnPause">更新を止める</button>
+  <button id="btnReload">一覧を更新</button>
+</header>
+<div class="layout">
+  <aside>
+    <section>
+      <h2>起動(計測 1 回分)</h2>
+      <div id="runs"></div>
+      <div class="row"><button id="selAll">すべて選択</button><button id="selNone">すべて解除</button></div>
+      <p class="hint">チェックした起動が、色分けして重ねて描かれます。横軸の 0 は、各起動の記録開始です。</p>
+    </section>
+    <section>
+      <h2>表示</h2>
+      <div class="row"><span>横軸</span>
+        <select id="xmode">
+          <option value="uptime">経過時間(0 秒を揃えて重ねる)</option>
+          <option value="wall">日時</option>
+        </select>
+      </div>
+      <div class="row"><span>範囲</span>
+        <select id="range">
+          <option value="0">全体</option>
+          <option value="60">直近 1 分</option>
+          <option value="300">直近 5 分</option>
+          <option value="900">直近 15 分</option>
+          <option value="3600">直近 1 時間</option>
+          <option value="21600">直近 6 時間</option>
+          <option value="86400">直近 24 時間</option>
+          <option value="custom" hidden>拡大中</option>
+        </select>
+      </div>
+      <div class="row"><label><input type="checkbox" id="follow" checked>最新を追う</label></div>
+      <div class="row"><label><input type="checkbox" id="zerobase">縦軸を 0 から始める</label></div>
+      <p class="hint">グラフ上: ホイールで拡大・縮小、ドラッグで移動、ダブルクリックで全体に戻す。</p>
+      <details id="colPicker"><summary>表示するグラフ</summary><div id="colList" class="cols"></div></details>
+    </section>
+    <section>
+      <h2>確認(取得できなかった列)</h2>
+      <div id="warnings" class="muted">データを読み込むと表示されます。</div>
+    </section>
+    <section>
+      <details>
+        <summary>起動ごとの条件の比較</summary>
+        <div id="metaCompare"><span class="muted">起動を 2 つ以上選ぶと、違う項目が強調されます。</span></div>
+      </details>
+    </section>
+  </aside>
+  <main id="charts">
+    <div class="empty" id="emptyMsg">読み込み中…</div>
+  </main>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+// ------------------------------------------------------------------ 定数
+
+const POLL_MS = 1000; // 新しい行を取りに行く間隔
+const RUNLIST_MS = 5000; // 起動の一覧を取り直す間隔
+const PAGE_LIMIT = 50000; // 1 回に取る行数
+const MIN_GAP_SECONDS = 3.5; // これより離れた 2 点は、線をつなげない(記録が途切れた)
+const MIN_SPAN_SECONDS = 10; // 拡大の限界
+const MIN_ZERO_ROWS = 30; // 「ずっと 0」と判定するのに必要な行数
+const MIN_MISSING_ROWS = 3; // 「取得できず」と判定するのに必要な行数
+const SLOPE_MAX_POINTS = 4000; // 傾きの計算に使う点の上限
+const SLOPE_MIN_SECONDS = 300; // 傾き(1 時間あたり)を出すのに必要な範囲の長さ。短いと、換算した値がぶれる
+const PALETTE = ['#4c9be8', '#f28e2b', '#59a14f', '#e15759', '#b07aa1', '#76b7b2', '#edc948', '#9c755f'];
+const GROUPS = ['FPS', 'CPU', 'GPU', 'メモリ', 'GC', 'その他'];
+const TIME_STEPS = [1, 2, 5, 10, 15, 30, 60, 120, 300, 600, 900, 1800, 3600, 7200, 10800, 21600, 43200, 86400, 172800, 432000];
+const STORAGE_KEY = 'perfviewer.v1';
+
+const COLUMN_META = {
+  fps: { label: 'FPS', unit: 'fps', group: 'FPS', dec: 1 },
+  frame_ms_avg: { label: 'フレーム時間(平均)', unit: 'ms', group: 'FPS', dec: 2 },
+  frame_ms_max: { label: 'フレーム時間(最大)', unit: 'ms', group: 'FPS', dec: 1 },
+  cpu_main_ms: { label: 'CPU メインスレッド時間', unit: 'ms', group: 'CPU', dec: 2 },
+  cpu_render_ms: { label: 'CPU レンダースレッド時間', unit: 'ms', group: 'CPU', dec: 2 },
+  cpu_process_pct: { label: 'CPU 使用率(本アプリ)', unit: '%', group: 'CPU', dec: 1 },
+  gpu_ms: { label: 'GPU 時間', unit: 'ms', group: 'GPU', dec: 2 },
+  gpu_pct: { label: 'GPU 使用率', unit: '%', group: 'GPU', dec: 1 },
+  vram_mb: { label: 'VRAM 使用量', unit: 'MB', group: 'GPU', dec: 0 },
+  gpu_temp_c: { label: 'GPU 温度', unit: '℃', group: 'GPU', dec: 0 },
+  ws_mb: { label: '物理メモリ(ワーキングセット)', unit: 'MB', group: 'メモリ', dec: 1 },
+  private_mb: { label: 'プライベートメモリ', unit: 'MB', group: 'メモリ', dec: 1 },
+  unity_alloc_mb: { label: 'Unity 確保量(使用中)', unit: 'MB', group: 'メモリ', dec: 1 },
+  unity_reserved_mb: { label: 'Unity 予約量', unit: 'MB', group: 'メモリ', dec: 1 },
+  gc0: { label: 'GC 回数(世代 0・累計)', unit: '回', group: 'GC', dec: 0 },
+  gc1: { label: 'GC 回数(世代 1・累計)', unit: '回', group: 'GC', dec: 0 },
+  gc2: { label: 'GC 回数(世代 2・累計)', unit: '回', group: 'GC', dec: 0 },
+  mono_used_mb: { label: 'マネージドヒープ 使用量', unit: 'MB', group: 'GC', dec: 1 },
+  mono_heap_mb: { label: 'マネージドヒープ 確保量', unit: 'MB', group: 'GC', dec: 1 },
+};
+const META_HIDE = new Set(['columns', 'schema']);
+
+// ------------------------------------------------------------------ 状態
+
+const state = {
+  runs: new Map(), // フォルダ名 -> 起動
+  colorCount: 0,
+  xMode: 'uptime',
+  rangeSec: 0, // 0 なら全体
+  custom: null, // 拡大中の範囲 {x0, x1}(秒)
+  follow: true,
+  zeroBase: false,
+  paused: false,
+  hoverX: null,
+  view: { x0: 0, x1: 1 },
+  columns: [], // 表示候補の列(順序つき)
+  colHidden: new Set(),
+  charts: new Map(), // 列名 -> グラフ
+  dirtyData: true,
+  slopes: new Map(),
+  root: '',
+  serverOk: false,
+  lastUpdate: 0,
+  firstListDone: false,
+};
+window.__pv = state; // 動作確認用
+
+function loadPrefs() {
+  try {
+    const p = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    if (p.xMode === 'uptime' || p.xMode === 'wall') state.xMode = p.xMode;
+    if (typeof p.rangeSec === 'number') state.rangeSec = p.rangeSec;
+    if (typeof p.follow === 'boolean') state.follow = p.follow;
+    if (typeof p.zeroBase === 'boolean') state.zeroBase = p.zeroBase;
+    if (Array.isArray(p.colHidden)) state.colHidden = new Set(p.colHidden);
+  } catch (e) { /* 保存できない環境でも動く */ }
+}
+function savePrefs() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      xMode: state.xMode, rangeSec: state.rangeSec, follow: state.follow, zeroBase: state.zeroBase, colHidden: [...state.colHidden],
+    }));
+  } catch (e) { /* 保存できない環境でも動く */ }
+}
+
+// ------------------------------------------------------------------ 小さな道具
+
+const $ = (id) => document.getElementById(id);
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
+}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function fmtFixed(v, d) {
+  return v.toLocaleString('ja-JP', { minimumFractionDigits: d, maximumFractionDigits: d });
+}
+function fmtSlope(v) {
+  const a = Math.abs(v);
+  const d = a >= 100 ? 0 : a >= 10 ? 1 : 2;
+  return (v >= 0 ? '+' : '−') + fmtFixed(a, d);
+}
+function fmtDuration(sec) {
+  sec = Math.max(0, Math.round(sec));
+  const d = Math.floor(sec / 86400), h = Math.floor((sec % 86400) / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  if (d > 0) return d + '日 ' + h + ':' + pad2(m) + ':' + pad2(s);
+  if (h > 0) return h + ':' + pad2(m) + ':' + pad2(s);
+  return m + ':' + pad2(s);
+}
+function fmtWall(sec, withDate, withSeconds) {
+  const t = new Date(sec * 1000);
+  const hm = pad2(t.getHours()) + ':' + pad2(t.getMinutes()) + (withSeconds ? ':' + pad2(t.getSeconds()) : '');
+  return withDate ? (t.getMonth() + 1) + '/' + t.getDate() + ' ' + hm : hm;
+}
+function niceStep(range, count) {
+  const raw = range / count;
+  const p = Math.pow(10, Math.floor(Math.log10(raw)));
+  const f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10) * p;
+}
+function niceTimeStep(span, count) {
+  const raw = span / count;
+  for (const s of TIME_STEPS) if (s >= raw) return s;
+  return TIME_STEPS[TIME_STEPS.length - 1];
+}
+function lowerBound(arr, n, x) { // arr[0..n) が昇順のとき、x 以上の最初の位置
+  let lo = 0, hi = n;
+  while (lo < hi) {
+    const mid = (lo + hi) >>> 1;
+    if (arr[mid] < x) lo = mid + 1; else hi = mid;
+  }
+  return lo;
+}
+function colMeta(col) {
+  return COLUMN_META[col] || { label: col, unit: '', group: 'その他', dec: 2 };
+}
+function theme() {
+  const cs = getComputedStyle(document.documentElement);
+  const g = (n) => cs.getPropertyValue(n).trim();
+  return { text: g('--text'), muted: g('--muted'), grid: g('--grid'), panel: g('--panel'), border: g('--border') };
+}
+
+// ------------------------------------------------------------------ 起動(Run)とデータ
+
+function newRun(info) {
+  return {
+    name: info.name, label: info.label || info.name, start: info.start || '', meta: info.meta || null,
+    color: PALETTE[state.colorCount++ % PALETTE.length], selected: false, live: !!info.live, total: info.rows || 0,
+    since: 0, n: 0, cap: 0, t0: null, loading: false, error: null,
+    colNames: null, ci: new Map(), idxWall: 0, idxUp: 1, xu: null, xw: null, v: [], miss: [], zero: [], files: info.files || [],
+  };
+}
+function resetRun(run) {
+  run.since = 0; run.n = 0; run.cap = 0; run.t0 = null; run.colNames = null; run.ci = new Map(); run.xu = null; run.xw = null;
+  run.v = []; run.miss = []; run.zero = [];
+}
+function ensureCapacity(run, need) {
+  if (need <= run.cap) return;
+  let cap = Math.max(1024, run.cap);
+  while (cap < need) cap *= 2;
+  const grow = (old) => { const a = new Float64Array(cap); if (old) a.set(old.subarray(0, run.n)); return a; };
+  run.xu = grow(run.xu);
+  run.xw = grow(run.xw);
+  run.v = run.v.map(grow);
+  run.cap = cap;
+}
+function appendRows(run, columns, rows) {
+  if (!run.colNames) {
+    run.idxWall = Math.max(0, columns.indexOf('wall'));
+    run.idxUp = columns.indexOf('uptime_s') >= 0 ? columns.indexOf('uptime_s') : 1;
+    run.colNames = [];
+    run.colIdx = [];
+    columns.forEach((c, j) => { if (j !== run.idxWall && j !== run.idxUp) { run.ci.set(c, run.colNames.length); run.colNames.push(c); run.colIdx.push(j); } });
+    run.v = run.colNames.map(() => null);
+    run.miss = run.colNames.map(() => 0);
+    run.zero = run.colNames.map(() => 0);
+    run.cap = 0;
+  }
+  ensureCapacity(run, run.n + rows.length);
+  const nc = run.colNames.length;
+  for (let k = 0; k < rows.length; k++) {
+    const row = rows[k];
+    const up = row[run.idxUp];
+    const wall = Date.parse(row[run.idxWall]);
+    if (up === null || up === undefined || Number.isNaN(wall)) continue; // 時刻が読めない行は捨てる
+    if (run.t0 === null) run.t0 = up;
+    const i = run.n;
+    run.xu[i] = up - run.t0;
+    run.xw[i] = wall / 1000;
+    for (let c = 0; c < nc; c++) {
+      const x = row[run.colIdx[c]];
+      const val = (x === null || x === undefined) ? NaN : x;
+      run.v[c][i] = val;
+      if (!(val >= 0)) run.miss[c]++; else if (val === 0) run.zero[c]++;
+    }
+    run.n++;
+  }
+}
+async function fetchJson(url) {
+  const r = await fetch(url, { cache: 'no-store' });
+  if (!r.ok) throw new Error(url + ' -> ' + r.status);
+  return r.json();
+}
+async function loadRun(run) {
+  if (run.loading) return;
+  run.loading = true;
+  try {
+    for (;;) {
+      const res = await fetchJson('/api/data?run=' + encodeURIComponent(run.name) + '&since=' + run.since + '&limit=' + PAGE_LIMIT);
+      if (res.total < run.since) { resetRun(run); continue; } // ファイルが作り直された
+      run.total = res.total;
+      run.live = res.live;
+      if (res.rows.length === 0) break;
+      appendRows(run, res.columns, res.rows);
+      run.since += res.rows.length;
+      state.dirtyData = true;
+      state.lastUpdate = Date.now();
+      scheduleDraw();
+      if (res.rows.length < PAGE_LIMIT) break;
+    }
+    run.error = null;
+  } catch (e) {
+    run.error = String(e);
+    throw e;
+  } finally {
+    run.loading = false;
+  }
+}
+function selectedRuns() {
+  return [...state.runs.values()].filter((r) => r.selected);
+}
+const xs = (run) => (state.xMode === 'wall' ? run.xw : run.xu);
+
+// ------------------------------------------------------------------ 起動の一覧
+
+async function refreshRunList() {
+  const res = await fetchJson('/api/runs');
+  state.root = res.root;
+  for (const info of res.runs) {
+    let run = state.runs.get(info.name);
+    if (!run) {
+      run = newRun(info);
+      state.runs.set(info.name, run);
+    } else {
+      run.label = info.label || run.label;
+      run.meta = info.meta || run.meta;
+      run.total = info.rows;
+      run.live = info.live;
+      run.files = info.files;
+    }
+  }
+  if (!state.firstListDone) {
+    state.firstListDone = true;
+    const first = res.runs.find((r) => r.live) || res.runs[0];
+    if (first) state.runs.get(first.name).selected = true;
+  }
+  renderRunList();
+}
+function renderRunList() {
+  const box = $('runs');
+  const list = [...state.runs.values()].sort((a, b) => (a.start < b.start ? 1 : -1));
+  if (box.dataset.sig === list.map((r) => r.name + r.selected).join('|')) {
+    for (const r of list) updateRunSub(r);
+    return;
+  }
+  box.dataset.sig = list.map((r) => r.name + r.selected).join('|');
+  box.textContent = '';
+  if (list.length === 0) {
+    box.append(el('div', 'muted', 'まだ記録がありません。ゲームを -perf で起動してください。'));
+    return;
+  }
+  for (const r of list) {
+    const lab = el('label', 'run');
+    const cb = el('input');
+    cb.type = 'checkbox';
+    cb.checked = r.selected;
+    cb.addEventListener('change', () => { r.selected = cb.checked; onSelectionChanged(); });
+    const sw = el('i', 'sw');
+    sw.style.background = r.color;
+    const body = el('div');
+    body.append(el('div', 'rname', r.label), el('div', 'rsub'));
+    r.subEl = body.lastChild;
+    lab.append(cb, sw, body);
+    box.append(lab);
+    updateRunSub(r);
+  }
+}
+function updateRunSub(r) {
+  if (!r.subEl) return;
+  r.subEl.textContent = '';
+  const when = (r.start || '').replace('T', ' ').slice(0, 16);
+  r.subEl.append(document.createTextNode(when + ' · ' + r.total.toLocaleString('ja-JP') + ' 行'));
+  if (r.live) r.subEl.append(document.createTextNode(' · '), el('span', 'live', '記録中'));
+  if (r.meta && r.meta.clean_exit === false && !r.live) r.subEl.append(document.createTextNode(' · '), el('span', 'tag warn', '異常終了の可能性'));
+}
+function onSelectionChanged() {
+  state.custom = null;
+  state.dirtyData = true;
+  renderRunList();
+  pollOnce();
+  scheduleDraw();
+}
+
+// ------------------------------------------------------------------ 列と警告
+
+function rebuildColumns() {
+  const present = new Set();
+  for (const r of selectedRuns()) if (r.colNames) r.colNames.forEach((c) => present.add(c));
+  const known = Object.keys(COLUMN_META).filter((c) => present.has(c));
+  const unknown = [...present].filter((c) => !(c in COLUMN_META));
+  const cols = known.concat(unknown);
+  if (cols.join(',') === state.columns.join(',')) return false;
+  state.columns = cols;
+  buildColumnPicker();
+  buildCharts();
+  return true;
+}
+function buildColumnPicker() {
+  const box = $('colList');
+  box.textContent = '';
+  for (const c of state.columns) {
+    const lab = el('label');
+    const cb = el('input');
+    cb.type = 'checkbox';
+    cb.checked = !state.colHidden.has(c);
+    cb.addEventListener('change', () => {
+      if (cb.checked) state.colHidden.delete(c); else state.colHidden.add(c);
+      savePrefs();
+      buildCharts();
+      scheduleDraw();
+    });
+    lab.append(cb, document.createTextNode(colMeta(c).label));
+    box.append(lab);
+  }
+}
+function computeWarnings() {
+  const items = [];
+  for (const r of selectedRuns()) {
+    if (!r.colNames || r.n === 0) continue;
+    r.colNames.forEach((c, k) => {
+      const m = colMeta(c);
+      if (r.n >= MIN_MISSING_ROWS && r.miss[k] === r.n) items.push({ run: r, col: c, kind: 'missing', text: '全行が -1(取得できなかった)' });
+      else if (r.miss[k] > 0) items.push({ run: r, col: c, kind: 'partial', text: r.miss[k].toLocaleString('ja-JP') + ' 行が -1(一部取得できなかった)' });
+      else if (r.n >= MIN_ZERO_ROWS && r.zero[k] === r.n) items.push({ run: r, col: c, kind: 'zero', text: 'ずっと 0(取得できていないか、本当に 0 かを確認)' });
+    });
+  }
+  return items;
+}
+function renderWarnings() {
+  const box = $('warnings');
+  const items = computeWarnings();
+  box.textContent = '';
+  for (const ch of state.charts.values()) { ch.card.classList.remove('has-err', 'has-warn'); ch.badge.classList.add('hidden'); }
+  if (selectedRuns().length === 0) { box.className = 'muted'; box.textContent = '起動を選ぶと表示されます。'; return; }
+  if (items.length === 0) { box.className = 'ok-text'; box.style.color = 'var(--ok)'; box.textContent = 'すべての列が取得できています。'; return; }
+  box.className = ''; box.style.color = '';
+  const order = { missing: 0, zero: 1, partial: 2 };
+  items.sort((a, b) => order[a.kind] - order[b.kind]);
+  for (const it of items) {
+    const d = el('div', 'warnitem');
+    const cls = it.kind === 'missing' ? 'err' : it.kind === 'zero' ? 'warn' : 'info';
+    const tag = it.kind === 'missing' ? '取得できず' : it.kind === 'zero' ? '0 固定' : '一部欠測';
+    d.append(el('span', 'tag ' + cls, tag), document.createTextNode(colMeta(it.col).label + ' — ' + it.run.label + ': ' + it.text));
+    box.append(d);
+    const ch = state.charts.get(it.col);
+    if (ch) {
+      ch.badge.classList.remove('hidden');
+      if (it.kind === 'missing') { ch.card.classList.add('has-err'); ch.badge.className = 'tag err'; ch.badge.textContent = '取得できず'; }
+      else if (it.kind === 'zero' && !ch.card.classList.contains('has-err')) { ch.card.classList.add('has-warn'); ch.badge.className = 'tag warn'; ch.badge.textContent = '0 固定'; }
+      else if (it.kind === 'partial' && !ch.card.classList.contains('has-err') && !ch.card.classList.contains('has-warn')) { ch.badge.className = 'tag info'; ch.badge.textContent = '一部欠測'; }
+    }
+  }
+}
+function renderMetaCompare() {
+  const runs = selectedRuns().filter((r) => r.meta);
+  const box = $('metaCompare');
+  box.textContent = '';
+  if (runs.length < 1) { box.append(el('span', 'muted', '起動を選ぶと表示されます。')); return; }
+  const keys = [];
+  runs.forEach((r) => Object.keys(r.meta).forEach((k) => { if (!META_HIDE.has(k) && !keys.includes(k)) keys.push(k); }));
+  const t = el('table', 'meta');
+  const head = el('tr');
+  head.append(el('th', '', '項目'));
+  runs.forEach((r) => { const th = el('th'); const sw = el('i', 'sw'); sw.style.cssText = 'display:inline-block;margin-right:4px;background:' + r.color; th.append(sw, document.createTextNode(r.label)); head.append(th); });
+  t.append(head);
+  for (const k of keys) {
+    const vals = runs.map((r) => (r.meta[k] === undefined ? '' : String(r.meta[k])));
+    const tr = el('tr');
+    if (runs.length > 1 && new Set(vals).size > 1) tr.className = 'diff';
+    tr.append(el('th', '', k));
+    vals.forEach((v) => tr.append(el('td', '', v)));
+    t.append(tr);
+  }
+  box.append(t);
+}
+
+// ------------------------------------------------------------------ グラフの部品
+
+function buildCharts() {
+  const root = $('charts');
+  root.textContent = '';
+  state.charts.clear();
+  const cols = state.columns.filter((c) => !state.colHidden.has(c));
+  if (cols.length === 0) {
+    root.append(el('div', 'empty', selectedRuns().length ? '表示するグラフがありません。' : '左の「起動」を選ぶと、グラフが表示されます。'));
+    return;
+  }
+  for (const group of GROUPS) {
+    const inGroup = cols.filter((c) => colMeta(c).group === group);
+    if (inGroup.length === 0) continue;
+    root.append(el('h3', '', group));
+    const grid = el('div', 'grid');
+    root.append(grid);
+    for (const c of inGroup) grid.append(createChart(c));
+  }
+}
+function createChart(col) {
+  const m = colMeta(col);
+  const card = el('div', 'chart');
+  const head = el('div', 'chart-head');
+  const title = el('span', 'ctitle', m.label + (m.unit ? ' [' + m.unit + ']' : ''));
+  const badge = el('span', 'tag hidden');
+  const png = el('button', '', 'PNG');
+  png.title = 'このグラフを画像で保存';
+  head.append(title, badge, png);
+  const wrap = el('div', 'cwrap');
+  const base = el('canvas', 'base');
+  const over = el('canvas', 'over');
+  wrap.append(base, over);
+  const legend = el('div', 'legend');
+  card.append(head, wrap, legend);
+  const ch = { col, card, badge, wrap, base, over, legend, ctx: base.getContext('2d'), octx: over.getContext('2d'), w: 0, h: 0, geom: null, drag: null };
+  state.charts.set(col, ch);
+  new ResizeObserver(() => resizeChart(ch)).observe(wrap);
+  png.addEventListener('click', () => exportPng(ch));
+  over.addEventListener('mousemove', (e) => onHover(ch, e));
+  over.addEventListener('mouseleave', () => { if (!ch.drag) { state.hoverX = null; scheduleOverlay(); } });
+  over.addEventListener('wheel', (e) => onWheel(ch, e), { passive: false });
+  over.addEventListener('mousedown', (e) => onDragStart(ch, e));
+  over.addEventListener('dblclick', resetView);
+  return card;
+}
+function resizeChart(ch) {
+  const r = ch.wrap.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  ch.w = Math.max(0, Math.floor(r.width));
+  ch.h = Math.max(0, Math.floor(r.height));
+  for (const cv of [ch.base, ch.over]) { cv.width = ch.w * dpr; cv.height = ch.h * dpr; }
+  ch.dpr = dpr;
+  scheduleDraw();
+}
+
+// ------------------------------------------------------------------ 表示範囲
+
+function dataExtent() {
+  let min = Infinity, max = -Infinity;
+  for (const r of selectedRuns()) {
+    if (r.n === 0) continue;
+    const a = xs(r);
+    if (a[0] < min) min = a[0];
+    if (a[r.n - 1] > max) max = a[r.n - 1];
+  }
+  if (!isFinite(min)) { min = 0; max = 1; }
+  if (max - min < MIN_SPAN_SECONDS) max = min + MIN_SPAN_SECONDS;
+  return { min, max };
+}
+function computeView() {
+  const ext = dataExtent();
+  if (state.custom) return { x0: state.custom.x0, x1: state.custom.x1, ext };
+  if (state.rangeSec > 0) {
+    const x1 = ext.max;
+    return { x0: Math.max(x1 - state.rangeSec, ext.min - 0), x1: Math.max(x1, ext.min + MIN_SPAN_SECONDS), ext, windowed: true };
+  }
+  return { x0: ext.min, x1: ext.max, ext };
+}
+function setRangeSelect() {
+  $('range').value = state.custom ? 'custom' : String(state.rangeSec);
+}
+function resetView() {
+  state.custom = null;
+  state.rangeSec = 0;
+  state.follow = true;
+  $('follow').checked = true;
+  setRangeSelect();
+  savePrefs();
+  scheduleDraw();
+}
+function onWheel(ch, e) {
+  if (!ch.geom) return;
+  e.preventDefault();
+  const v = state.view;
+  const g = ch.geom;
+  const px = e.offsetX;
+  const cx = v.x0 + ((px - g.L) / g.pw) * (v.x1 - v.x0);
+  const f = e.deltaY < 0 ? 0.8 : 1.25;
+  let x0 = cx - (cx - v.x0) * f;
+  let x1 = cx + (v.x1 - cx) * f;
+  if (x1 - x0 < MIN_SPAN_SECONDS) { const mid = (x0 + x1) / 2; x0 = mid - MIN_SPAN_SECONDS / 2; x1 = mid + MIN_SPAN_SECONDS / 2; }
+  const ext = v.ext;
+  if (x1 - x0 >= ext.max - ext.min) { resetView(); return; }
+  state.custom = { x0, x1 };
+  state.follow = false;
+  $('follow').checked = false;
+  setRangeSelect();
+  scheduleDraw();
+}
+function onDragStart(ch, e) {
+  if (e.button !== 0 || !ch.geom) return;
+  const v = state.view;
+  ch.drag = { startX: e.clientX, x0: v.x0, x1: v.x1, moved: false };
+  state.hoverX = null;
+  const move = (ev) => {
+    const d = ch.drag;
+    if (!d) return;
+    const dx = ev.clientX - d.startX;
+    if (Math.abs(dx) > 3) d.moved = true;
+    if (!d.moved) return;
+    const span = d.x1 - d.x0;
+    const shift = (-dx / ch.geom.pw) * span;
+    let x0 = d.x0 + shift, x1 = d.x1 + shift;
+    const ext = state.view.ext;
+    if (x0 < ext.min) { x1 += ext.min - x0; x0 = ext.min; }
+    if (x1 > ext.max) { x0 -= x1 - ext.max; x1 = ext.max; }
+    state.custom = { x0, x1 };
+    state.follow = false;
+    $('follow').checked = false;
+    setRangeSelect();
+    scheduleDraw();
+  };
+  const up = () => {
+    window.removeEventListener('mousemove', move);
+    window.removeEventListener('mouseup', up);
+    ch.drag = null;
+  };
+  window.addEventListener('mousemove', move);
+  window.addEventListener('mouseup', up);
+}
+function onHover(ch, e) {
+  if (ch.drag || !ch.geom) return;
+  const g = ch.geom;
+  const v = state.view;
+  const px = e.offsetX;
+  if (px < g.L || px > g.L + g.pw) { state.hoverX = null; scheduleOverlay(); return; }
+  state.hoverX = v.x0 + ((px - g.L) / g.pw) * (v.x1 - v.x0);
+  scheduleOverlay();
+}
+
+// ------------------------------------------------------------------ 描画
+
+let drawQueued = false, overlayQueued = false;
+function scheduleDraw() {
+  if (drawQueued) return;
+  drawQueued = true;
+  requestAnimationFrame(() => { drawQueued = false; drawAll(); });
+}
+function scheduleOverlay() {
+  if (overlayQueued) return;
+  overlayQueued = true;
+  requestAnimationFrame(() => { overlayQueued = false; drawOverlays(); });
+}
+function drawAll() {
+  if (state.dirtyData) {
+    state.dirtyData = false;
+    const rebuilt = rebuildColumns();
+    renderWarnings();
+    renderMetaCompare();
+    renderRunList();
+    if (rebuilt) { for (const ch of state.charts.values()) resizeChart(ch); }
+  }
+  updateEmptyMsg();
+  state.view = computeView();
+  state.slopes = computeSlopes(state.view);
+  const th = theme();
+  for (const ch of state.charts.values()) drawChart(ch, state.view, th);
+  drawOverlays();
+  $('updated').textContent = state.lastUpdate ? '最終更新 ' + new Date(state.lastUpdate).toLocaleTimeString('ja-JP') : '';
+}
+function updateEmptyMsg() {
+  const m = $('emptyMsg');
+  if (!m) return;
+  if (!state.firstListDone) { m.textContent = '読み込み中…'; return; }
+  if (state.runs.size === 0) { m.textContent = 'まだ記録がありません。ゲームを -perf で起動すると表示されます。(読み取り先: ' + state.root + ')'; return; }
+  m.textContent = selectedRuns().length === 0 ? '左の「起動」を選ぶと、グラフが表示されます。' : 'データを読み込み中…';
+}
+function visibleRunsFor(col) {
+  return selectedRuns().filter((r) => r.n > 0 && r.ci.has(col));
+}
+function indexRange(run, view) {
+  const a = xs(run);
+  const i0 = Math.max(0, lowerBound(a, run.n, view.x0) - 1);
+  const i1 = Math.min(run.n - 1, lowerBound(a, run.n, view.x1));
+  return [i0, i1];
+}
+function drawChart(ch, view, th) {
+  const { ctx, w, h } = ch;
+  if (!w || !h) return;
+  const dpr = ch.dpr || 1;
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  ctx.font = '11px system-ui, "Yu Gothic UI", sans-serif';
+  const L = 56, R = 10, T = 8, B = 22;
+  const pw = w - L - R, ph = h - T - B;
+  const runs = visibleRunsFor(ch.col);
+
+  let lo = Infinity, hi = -Infinity;
+  for (const run of runs) {
+    const arr = run.v[run.ci.get(ch.col)];
+    const [i0, i1] = indexRange(run, view);
+    for (let i = i0; i <= i1; i++) { const val = arr[i]; if (val >= 0) { if (val < lo) lo = val; if (val > hi) hi = val; } }
+  }
+  ch.geom = { L, R, T, B, pw, ph, lo: 0, hi: 1 };
+  if (!isFinite(lo)) {
+    ctx.fillStyle = th.muted;
+    ctx.textAlign = 'center';
+    ctx.fillText(runs.length ? 'この範囲に有効な値がありません(すべて -1)' : '起動を選ぶと表示されます', w / 2, h / 2);
+    return;
+  }
+  if (state.zeroBase) lo = Math.min(lo, 0);
+  if (hi - lo < 1e-9) { const d = Math.max(Math.abs(hi) * 0.05, 1); lo -= d; hi += d; }
+  const pad = (hi - lo) * 0.08;
+  const nonNeg = lo >= 0;
+  lo -= pad; hi += pad;
+  if (nonNeg) lo = Math.max(0, lo);
+  ch.geom.lo = lo; ch.geom.hi = hi;
+  const X = (x) => L + ((x - view.x0) / (view.x1 - view.x0)) * pw;
+  const Y = (y) => T + (1 - (y - lo) / (hi - lo)) * ph;
+
+  // 縦軸の目盛り
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  const ystep = niceStep(hi - lo, 4);
+  const dec = ystep >= 1 ? 0 : Math.min(4, Math.ceil(-Math.log10(ystep)));
+  ctx.lineWidth = 1;
+  for (let y = Math.ceil(lo / ystep) * ystep; y <= hi + 1e-9; y += ystep) {
+    const py = Math.round(Y(y)) + 0.5;
+    ctx.strokeStyle = th.grid;
+    ctx.beginPath(); ctx.moveTo(L, py); ctx.lineTo(L + pw, py); ctx.stroke();
+    ctx.fillStyle = th.muted;
+    ctx.fillText(fmtFixed(y, dec), L - 6, py);
+  }
+  // 横軸の目盛り
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  const span = view.x1 - view.x0;
+  const tstep = niceTimeStep(span, Math.max(2, Math.floor(pw / 90)));
+  const off = state.xMode === 'wall' ? -new Date(view.x0 * 1000).getTimezoneOffset() * 60 : 0;
+  const crossesDay = state.xMode === 'wall' && (view.x1 - view.x0 > 86400 || new Date(view.x0 * 1000).getDate() !== new Date(view.x1 * 1000).getDate());
+  for (let t = Math.ceil((view.x0 + off) / tstep) * tstep - off; t <= view.x1 + 1e-6; t += tstep) {
+    const px = Math.round(X(t)) + 0.5;
+    ctx.strokeStyle = th.grid;
+    ctx.beginPath(); ctx.moveTo(px, T); ctx.lineTo(px, T + ph); ctx.stroke();
+    ctx.fillStyle = th.muted;
+    ctx.fillText(state.xMode === 'wall' ? fmtWall(t, crossesDay, tstep < 60) : fmtDuration(t), px, T + ph + 4);
+  }
+  ctx.strokeStyle = th.border;
+  ctx.strokeRect(L + 0.5, T + 0.5, pw, ph);
+
+  // 線(縦軸の範囲にクリップ)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(L, T, pw, ph); ctx.clip();
+  ctx.lineWidth = 1.5;
+  ctx.lineJoin = 'round';
+  for (const run of runs) drawSeries(ctx, run, ch.col, view, X, Y, pw, L);
+  ctx.restore();
+}
+function drawSeries(ctx, run, col, view, X, Y, pw, L) {
+  const a = xs(run);
+  const arr = run.v[run.ci.get(col)];
+  const [i0, i1] = indexRange(run, view);
+  const count = i1 - i0 + 1;
+  ctx.strokeStyle = run.color;
+  ctx.beginPath();
+  if (count <= pw * 2) {
+    let pen = false, lastX = 0;
+    for (let i = i0; i <= i1; i++) {
+      const val = arr[i];
+      if (!(val >= 0)) { pen = false; continue; }
+      const x = a[i];
+      const gap = pen && (x - lastX) > MIN_GAP_SECONDS;
+      if (!pen || gap) ctx.moveTo(X(x), Y(val)); else ctx.lineTo(X(x), Y(val));
+      pen = true; lastX = x;
+    }
+  } else {
+    // 点が多いときは、1 ピクセルごとの最小・最大だけを結ぶ(スパイクを落とさない)
+    const span = view.x1 - view.x0;
+    let curPx = -1, mn = 0, mx = 0, minFirst = true, lastPx = -10;
+    const flush = () => {
+      if (curPx < 0) return;
+      const x = L + curPx + 0.5;
+      const first = minFirst ? mn : mx, second = minFirst ? mx : mn;
+      if (curPx - lastPx > 1) ctx.moveTo(x, Y(first)); else ctx.lineTo(x, Y(first));
+      if (second !== first) ctx.lineTo(x, Y(second));
+      lastPx = curPx;
+    };
+    for (let i = i0; i <= i1; i++) {
+      const val = arr[i];
+      if (!(val >= 0)) continue;
+      let px = Math.floor(((a[i] - view.x0) / span) * pw);
+      if (px < 0) px = 0; else if (px >= pw) px = pw - 1;
+      if (px !== curPx) {
+        flush();
+        curPx = px; mn = val; mx = val; minFirst = true;
+      } else {
+        if (val < mn) { mn = val; if (mx === val) minFirst = false; }
+        if (val > mx) { mx = val; minFirst = true; }
+      }
+    }
+    flush();
+  }
+  ctx.stroke();
+}
+
+// ------------------------------------------------------------------ 重ね描き(十字線)と凡例
+
+function nearestIndex(run, x, view, pw) {
+  const a = xs(run);
+  const j = lowerBound(a, run.n, x);
+  let best = -1, bestD = Infinity;
+  for (const i of [j - 1, j]) {
+    if (i < 0 || i >= run.n) continue;
+    const d = Math.abs(a[i] - x);
+    if (d < bestD) { bestD = d; best = i; }
+  }
+  const tol = Math.max(MIN_GAP_SECONDS, ((view.x1 - view.x0) / Math.max(1, pw)) * 3);
+  return bestD <= tol ? best : -1;
+}
+function drawOverlays() {
+  const th = theme();
+  const view = state.view;
+  for (const ch of state.charts.values()) {
+    const { octx, w, h } = ch;
+    if (!w || !h || !ch.geom) continue;
+    const dpr = ch.dpr || 1;
+    octx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    octx.clearRect(0, 0, w, h);
+    const g = ch.geom;
+    const hx = state.hoverX;
+    if (hx !== null && hx >= view.x0 && hx <= view.x1) {
+      const px = Math.round(g.L + ((hx - view.x0) / (view.x1 - view.x0)) * g.pw) + 0.5;
+      octx.strokeStyle = th.muted;
+      octx.setLineDash([3, 3]);
+      octx.beginPath(); octx.moveTo(px, g.T); octx.lineTo(px, g.T + g.ph); octx.stroke();
+      octx.setLineDash([]);
+      for (const run of visibleRunsFor(ch.col)) {
+        const i = nearestIndex(run, hx, view, g.pw);
+        if (i < 0) continue;
+        const val = run.v[run.ci.get(ch.col)][i];
+        if (!(val >= 0)) continue;
+        const y = g.T + (1 - (val - g.lo) / (g.hi - g.lo)) * g.ph;
+        octx.fillStyle = run.color;
+        octx.beginPath(); octx.arc(g.L + ((xs(run)[i] - view.x0) / (view.x1 - view.x0)) * g.pw, y, 3.5, 0, Math.PI * 2); octx.fill();
+      }
+      octx.fillStyle = th.text;
+      octx.textAlign = px > g.L + g.pw / 2 ? 'right' : 'left';
+      octx.textBaseline = 'top';
+      octx.font = '11px system-ui, "Yu Gothic UI", sans-serif';
+      octx.fillText(state.xMode === 'wall' ? new Date(hx * 1000).toLocaleString('ja-JP') : '経過 ' + fmtDuration(hx), px + (px > g.L + g.pw / 2 ? -4 : 4), g.T + 2);
+    }
+    updateLegend(ch, view, g);
+  }
+}
+function computeSlopes(view) {
+  const out = new Map();
+  for (const ch of state.charts.values()) {
+    for (const run of visibleRunsFor(ch.col)) {
+      const a = xs(run), arr = run.v[run.ci.get(ch.col)];
+      const [i0, i1] = indexRange(run, view);
+      const stride = Math.max(1, Math.ceil((i1 - i0 + 1) / SLOPE_MAX_POINTS));
+      let n = 0, sx = 0, sy = 0, sxx = 0, sxy = 0;
+      const xb = a[i0];
+      for (let i = i0; i <= i1; i += stride) {
+        const y = arr[i];
+        if (!(y >= 0)) continue;
+        const x = a[i] - xb;
+        n++; sx += x; sy += y; sxx += x * x; sxy += x * y;
+      }
+      const den = n * sxx - sx * sx;
+      if (n >= 10 && den > 0 && (a[i1] - a[i0]) >= SLOPE_MIN_SECONDS) out.set(ch.col + '|' + run.name, ((n * sxy - sx * sy) / den) * 3600);
+    }
+  }
+  return out;
+}
+function updateLegend(ch, view, g) {
+  const m = colMeta(ch.col);
+  const runs = visibleRunsFor(ch.col);
+  ch.legend.textContent = '';
+  for (const run of runs) {
+    const arr = run.v[run.ci.get(ch.col)];
+    let val = NaN;
+    if (state.hoverX !== null) {
+      const i = nearestIndex(run, state.hoverX, view, g.pw);
+      if (i >= 0) val = arr[i];
+    } else {
+      for (let i = run.n - 1; i >= 0 && i >= run.n - 5; i--) if (arr[i] >= 0) { val = arr[i]; break; }
+    }
+    const item = el('span', 'lg');
+    const sw = el('i');
+    sw.style.background = run.color;
+    item.append(sw, document.createTextNode(run.label + ' '), el('b', '', val >= 0 ? fmtFixed(val, m.dec) + (m.unit ? ' ' + m.unit : '') : '―'));
+    const slope = state.slopes.get(ch.col + '|' + run.name);
+    if (state.hoverX === null && slope !== undefined && m.unit) item.append(el('em', '', fmtSlope(slope) + ' ' + m.unit + '/時間'));
+    ch.legend.append(item);
+  }
+}
+
+// ------------------------------------------------------------------ PNG 保存
+
+function exportPng(ch) {
+  if (!ch.w || !ch.h) return;
+  const th = theme();
+  const m = colMeta(ch.col);
+  const runs = visibleRunsFor(ch.col);
+  const dpr = ch.dpr || 1;
+  const headH = 28, legH = 18 * Math.max(1, runs.length) + 8;
+  const cv = document.createElement('canvas');
+  cv.width = ch.w * dpr; cv.height = (ch.h + headH + legH) * dpr;
+  const c = cv.getContext('2d');
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = th.panel; c.fillRect(0, 0, ch.w, ch.h + headH + legH);
+  c.fillStyle = th.text; c.font = 'bold 13px system-ui, "Yu Gothic UI", sans-serif'; c.textBaseline = 'middle'; c.textAlign = 'left';
+  c.fillText(m.label + (m.unit ? ' [' + m.unit + ']' : ''), 8, headH / 2);
+  c.drawImage(ch.base, 0, headH, ch.w, ch.h);
+  c.drawImage(ch.over, 0, headH, ch.w, ch.h);
+  c.font = '12px system-ui, "Yu Gothic UI", sans-serif';
+  runs.forEach((run, k) => {
+    const y = headH + ch.h + 14 + k * 18;
+    c.fillStyle = run.color; c.fillRect(8, y - 5, 10, 10);
+    const arr = run.v[run.ci.get(ch.col)];
+    let last = NaN;
+    for (let i = run.n - 1; i >= 0; i--) if (arr[i] >= 0) { last = arr[i]; break; }
+    const slope = state.slopes.get(ch.col + '|' + run.name);
+    c.fillStyle = th.text;
+    c.fillText(run.label + '  最新 ' + (last >= 0 ? fmtFixed(last, m.dec) : '―') + (slope !== undefined ? '  傾き ' + fmtSlope(slope) + ' ' + m.unit + '/時間' : ''), 24, y);
+  });
+  cv.toBlob((blob) => {
+    if (!blob) return;
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'perf_' + ch.col + '.png';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+  });
+}
+
+// ------------------------------------------------------------------ 更新ループ
+
+function setConn(ok, text) {
+  const c = $('conn');
+  c.className = 'pill ' + (ok ? 'ok' : 'err');
+  c.textContent = text;
+}
+async function pollOnce() {
+  const runs = selectedRuns();
+  try {
+    await Promise.all(runs.map(loadRun));
+    state.serverOk = true;
+    setConn(true, state.paused ? '一時停止中' : (runs.some((r) => r.live) ? '記録中のデータを表示' : '接続中'));
+  } catch (e) {
+    state.serverOk = false;
+    setConn(false, 'サーバーに接続できません');
+  }
+}
+async function mainLoop() {
+  let sinceList = RUNLIST_MS;
+  for (;;) {
+    if (!state.paused) {
+      try {
+        if (sinceList >= RUNLIST_MS) { await refreshRunList(); sinceList = 0; state.dirtyData = true; scheduleDraw(); }
+        await pollOnce();
+      } catch (e) {
+        state.serverOk = false;
+        setConn(false, 'サーバーに接続できません');
+      }
+    }
+    await sleep(POLL_MS);
+    sinceList += POLL_MS;
+  }
+}
+
+// ------------------------------------------------------------------ 画面の部品
+
+function bindControls() {
+  $('xmode').value = state.xMode;
+  $('range').value = String(state.rangeSec);
+  $('follow').checked = state.follow;
+  $('zerobase').checked = state.zeroBase;
+  $('xmode').addEventListener('change', (e) => { state.xMode = e.target.value; state.custom = null; savePrefs(); scheduleDraw(); });
+  $('range').addEventListener('change', (e) => {
+    state.custom = null;
+    state.rangeSec = e.target.value === 'custom' ? 0 : Number(e.target.value);
+    savePrefs(); scheduleDraw();
+  });
+  $('follow').addEventListener('change', (e) => {
+    state.follow = e.target.checked;
+    // 追うのをやめたら今の範囲で止め、また追うなら最新に戻す
+    state.custom = state.follow ? null : { x0: state.view.x0, x1: state.view.x1 };
+    setRangeSelect();
+    savePrefs();
+    scheduleDraw();
+  });
+  $('zerobase').addEventListener('change', (e) => { state.zeroBase = e.target.checked; savePrefs(); scheduleDraw(); });
+  $('btnPause').addEventListener('click', () => {
+    state.paused = !state.paused;
+    $('btnPause').textContent = state.paused ? '更新を再開' : '更新を止める';
+    setConn(true, state.paused ? '一時停止中' : '接続中');
+  });
+  $('btnReload').addEventListener('click', async () => { try { await refreshRunList(); } catch (e) { /* 次の周期で再試行 */ } });
+  $('selAll').addEventListener('click', () => { state.runs.forEach((r) => { r.selected = true; }); onSelectionChanged(); });
+  $('selNone').addEventListener('click', () => { state.runs.forEach((r) => { r.selected = false; }); onSelectionChanged(); });
+  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', scheduleDraw);
+}
+
+loadPrefs();
+bindControls();
+mainLoop();
+})();
+</script>
+</body>
+</html>
