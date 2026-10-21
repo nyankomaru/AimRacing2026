@@ -34,6 +34,7 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
             // 衝突したオブジェクトのレンダラー
             Renderer hitrenderer = hit.collider.GetComponent<Renderer>();
 
+            Mesh mesh = hitmeshFilter.sharedMesh;
             // ヌルチェック
             if (hitrenderer == null)
             {
@@ -45,6 +46,13 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
 
                 return;// ないならリターン
             }
+
+            if (mesh == null)
+            {
+
+                return;// ないならリターン
+            }
+
             if (hitmeshFilter.sharedMesh == null)
             {
 
@@ -78,8 +86,8 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
             Vector3 localNormal = new Vector3(color.r * 2.0f - 1.0f, color.g * 2.0f - 1.0f, color.b * 2.0f - 1.0f).normalized;
 
             // ワールド空間の法線に変換して傾きを計算
-            Vector3 worldNormal = hit.normal;
-            Vector3 worldTangent = hit.transform.TransformDirection(GetInterpolatedTangent(hit.collider.GetComponent<MeshFilter>().sharedMesh, hit));
+            Vector3 worldNormal = GetInterpolatedTangent(mesh,hit);
+            Vector3 worldTangent = hit.transform.TransformDirection(worldNormal);
             Vector3 worldBitangent = Vector3.Cross(worldNormal, worldTangent).normalized;
 
             Vector3 finalWorldNormal = (localNormal.x * worldTangent +
@@ -108,9 +116,16 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
         int[] triangles = mesh.triangles;
         Vector4[] tangents = mesh.tangents;
 
-        int i0 = triangles[hit.triangleIndex * 3 + 0];
-        int i1 = triangles[hit.triangleIndex * 3 + 1];
-        int i2 = triangles[hit.triangleIndex * 3 + 2];
+        int triangleStart = hit.triangleIndex * 3;
+
+        int i0 = triangles[triangleStart + 0];
+        int i1 = triangles[triangleStart + 1];
+        int i2 = triangles[triangleStart + 2];
+
+        if (i0 >= tangents.Length || i1 >= tangents.Length || i2 >= tangents.Length)
+        {
+            return Vector3.right;
+        }
 
         Vector3 barycentric = hit.barycentricCoordinate;
         Vector3 interpolatedTangent = tangents[i0] * barycentric.x +
