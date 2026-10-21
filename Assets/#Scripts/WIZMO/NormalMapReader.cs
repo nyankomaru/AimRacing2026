@@ -21,78 +21,78 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
 
     void SurfaceNormalMap()
     {
-        //// オブジェクトの下にレイを飛ばす
-        //Ray ray = new Ray(transform.position, Vector3.down);
+        // オブジェクトの下にレイを飛ばす
+        Ray ray = new Ray(transform.position, Vector3.down);
 
 
 
-        //if (Physics.Raycast(ray,out RaycastHit hit , 100 , TargetLayer))
-        //{
-        //    // 衝突したオブジェクトのメッシュ　
-        //    MeshFilter hitmeshFilter = hit.collider.GetComponent<MeshFilter>();
+        if (Physics.Raycast(ray, out RaycastHit hit, 100, TargetLayer))
+        {
+            // 衝突したオブジェクトのメッシュ　
+            MeshFilter hitmeshFilter = hit.collider.GetComponent<MeshFilter>();
 
-        //    // 衝突したオブジェクトのレンダラー
-        //    Renderer hitrenderer = hit.collider.GetComponent<Renderer>();
+            // 衝突したオブジェクトのレンダラー
+            Renderer hitrenderer = hit.collider.GetComponent<Renderer>();
 
-        //    // ヌルチェック
-        //    if (hitrenderer == null)
-        //    {
+            // ヌルチェック
+            if (hitrenderer == null)
+            {
 
-        //        return;// ないならリターン
-        //    }
-        //    if (hitmeshFilter == null)
-        //    {
+                return;// ないならリターン
+            }
+            if (hitmeshFilter == null)
+            {
 
-        //        return;// ないならリターン
-        //    }
-        //    if (hitmeshFilter.sharedMesh == null)
-        //    {
+                return;// ないならリターン
+            }
+            if (hitmeshFilter.sharedMesh == null)
+            {
 
-        //        return;// ないならリターン
-        //    }
-
-
-        //    // レイがヒットしたマテリアルの番号を計算
-        //    int subMeshIndex = GetHitSubMeshIndex(hitmeshFilter.sharedMesh, hit.triangleIndex);
-
-        //    // 配列外の処理はreturn
-        //    if (subMeshIndex >= hitrenderer.sharedMaterials.Length) return;
-            
-        //    // メッシュの情報からマテリアルの配列を取得
-        //    Material targetMaterial = hitrenderer.sharedMaterials[subMeshIndex];
-
-        //    //  マテリアルからnormalマップを取得
-        //    Texture2D RoadNormalMap = targetMaterial.GetTexture("_NormalMap") as Texture2D;
-        //    if (RoadNormalMap == null)
-        //    {
-        //        return;// ないならリターン
-        //    }
-
-        //    // UV座標の取得
-        //    Vector2 uv = hit.textureCoord;
-
-        //    // ノーマルマップのピクセル色を取得
-        //    Color color = RoadNormalMap.GetPixelBilinear(uv.x, uv.y);
-
-        //    // 接空間の法線ベクトルに変換
-        //    Vector3 localNormal = new Vector3(color.r * 2.0f - 1.0f,color.g * 2.0f - 1.0f,color.b * 2.0f - 1.0f).normalized;
-
-        //    // ワールド空間の法線に変換して傾きを計算
-        //    Vector3 worldNormal = hit.normal;
-        //    Vector3 worldTangent = hit.transform.TransformDirection(GetInterpolatedTangent(hit.collider.GetComponent<MeshFilter>().sharedMesh, hit));
-        //    Vector3 worldBitangent = Vector3.Cross(worldNormal, worldTangent).normalized;
-
-        //    Vector3 finalWorldNormal = (localNormal.x * worldTangent +
-        //                                localNormal.y * worldBitangent +
-        //                                localNormal.z * worldNormal).normalized;
+                return;// ないならリターン
+            }
 
 
-        //    float angle = Vector3.Angle(worldNormal, finalWorldNormal);
+            // レイがヒットしたマテリアルの番号を計算
+            int subMeshIndex = GetHitSubMeshIndex(hitmeshFilter.sharedMesh, hit.triangleIndex);
+
+            // 配列外の処理はreturn
+            if (subMeshIndex >= hitrenderer.sharedMaterials.Length) return;
+
+            // メッシュの情報からマテリアルの配列を取得
+            Material targetMaterial = hitrenderer.sharedMaterials[subMeshIndex];
+
+            //  マテリアルからnormalマップを取得
+            Texture2D RoadNormalMap = targetMaterial.GetTexture("_NormalMap") as Texture2D;
+            if (RoadNormalMap == null)
+            {
+                return;// ないならリターン
+            }
+
+            // UV座標の取得
+            Vector2 uv = hit.textureCoord;
+
+            // ノーマルマップのピクセル色を取得
+            Color color = RoadNormalMap.GetPixelBilinear(uv.x, uv.y);
+
+            // 接空間の法線ベクトルに変換
+            Vector3 localNormal = new Vector3(color.r * 2.0f - 1.0f, color.g * 2.0f - 1.0f, color.b * 2.0f - 1.0f).normalized;
+
+            // ワールド空間の法線に変換して傾きを計算
+            Vector3 worldNormal = hit.normal;
+            Vector3 worldTangent = hit.transform.TransformDirection(GetInterpolatedTangent(hit.collider.GetComponent<MeshFilter>().sharedMesh, hit));
+            Vector3 worldBitangent = Vector3.Cross(worldNormal, worldTangent).normalized;
+
+            Vector3 finalWorldNormal = (localNormal.x * worldTangent +
+                                        localNormal.y * worldBitangent +
+                                        localNormal.z * worldNormal).normalized;
 
 
-             
-        //    Debug.DrawRay(hit.point, finalWorldNormal * 0.5f, Color.red);
-        //    Debug.Log($"【RoadNormalMapNormalMapReader】対象: {hit.collider.name} | 傾き: {angle:F2}度");
+            float angle = Vector3.Angle(worldNormal, finalWorldNormal);
+
+
+
+            Debug.DrawRay(hit.point, finalWorldNormal * 0.5f, Color.red);
+            Debug.Log($"【RoadNormalMapNormalMapReader】対象: {hit.collider.name} | 傾き: {angle:F2}度");
 
         }
     }
