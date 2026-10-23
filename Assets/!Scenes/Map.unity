@@ -22606,6 +22606,7 @@ GameObject:
   - component: {fileID: 5005934364370456131}
   - component: {fileID: 5005934364370456132}
   - component: {fileID: 5005934364370456133}
+  - component: {fileID: 5005934364370456134}
   m_Layer: 3
   m_Name: Chair
   m_TagString: Untagged
@@ -24701,6 +24702,20 @@ MonoBehaviour:
   TargetLayer:
     serializedVersion: 2
     m_Bits: 64
+  RayCastOffset_X: 0
+  RayCastOffset_Z: 0
+--- !u!114 &5005934364370456134
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2978451414601764005}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dac7cc84ab3f4ad4a9aa8bd9273ab60d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: '::'
 --- !u!224 &5093623969563221823
 RectTransform:
   m_ObjectHideFlags: 0
@@ -26244,6 +26259,10 @@ MonoBehaviour:
       m_Calls: []
     m_ActionId: f1a6c9d3-8e42-4b7a-9c15-5d8f2a4e7b91
     m_ActionName: MainSystem/BrakePedal
+  - m_PersistentCalls:
+      m_Calls: []
+    m_ActionId: b6e29d47-1a83-4f56-9c72-5e8a3d1b6f94
+    m_ActionName: 'MainSystem/SteeringKeyboard[/Keyboard/leftArrow,/Keyboard/rightArrow]'
   m_NeverAutoSwitchControlSchemes: 0
   m_DefaultControlScheme: 
   m_DefaultActionMap: InGame
