@@ -1,28 +1,74 @@
 //--------------// 法線マップの情報を読み込むスクリプト(髙山)//--------------
+using System;
 using UnityEngine;
 
 public class RoadNormalMapNormalMapReader : MonoBehaviour
 {
     [SerializeField] private LayerMask TargetLayer;
 
-    [SerializeField, Range(-0.7f, 1.3f)]
-    private float RayCastOffset_X = 0f;
+    [SerializeField] private Transform vehicleRoot;
 
-    [SerializeField, Range(-0.7f, 1.3f)]
-    private float RayCastOffset_Z = 0;
+    [Header("タイヤオブジェクト")]
+    [SerializeField] private Transform FriontRightWheel;
+    [SerializeField] private Transform FriontLeftWheel;
+    [SerializeField] private Transform BackRightWheel;
+    [SerializeField] private Transform BackLeftWheel;
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float FrontRightRayCastOffset_X = 0f;
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float FrontRightRayCastOffset_Z = 0;
+
+
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float FrontLeftRayCastOffset_X = 0f;
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float FrontLeftRayCastOffset_Z = 0;
+
+
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float BackRightRayCastOffset_X = 0f;
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float BackRightRayCastOffset_Z = 0;
+
+
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float BackLeftRayCastOffset_X = 0f;
+
+    //[SerializeField, Range(-0.7f, 1.3f)]
+    //private float BackLeftRayCastOffset_Z = 0;
+
 
 
     void Update()
-    {
-        SurfaceNormalMap();
+    {        // 前方右側車輪 
+        SurfaceNormalMap(FriontRightWheel);
+
+        // 前方左側車輪
+        SurfaceNormalMap(FriontLeftWheel);
+
+        // 後方右側車輪
+        SurfaceNormalMap(BackRightWheel);
+
+        //　後方左側車輪
+        SurfaceNormalMap(BackLeftWheel);
     }
 
-    void SurfaceNormalMap()
+    void SurfaceNormalMap(Transform WheelTransform)
     {
-        Vector3 RayPosition = new Vector3(transform.position.x + RayCastOffset_X, transform.position.y, transform.position.z + RayCastOffset_Z);
+        if (WheelTransform == null) return;
 
+        Transform baseTransform = vehicleRoot != null ? vehicleRoot : transform;
+
+        Vector3 RayPosition = WheelTransform.position + baseTransform.up;
         // オブジェクトの下にレイを飛ばす
-        Ray ray = new Ray(RayPosition, -transform.up);
+        Ray ray = new Ray(RayPosition, -baseTransform.up);
 
         if (Physics.Raycast(ray, out RaycastHit hit, 100f, TargetLayer))
         {            
@@ -97,8 +143,8 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
                                         localNormal.z * worldNormal).normalized;
 
 
-            float RelativeAngle = Vector3.Angle(transform.up, finalWorldNormal);
-            Vector3 LocalSelfNormal = transform.InverseTransformDirection(finalWorldNormal);
+            float RelativeAngle = Vector3.Angle(baseTransform.up, finalWorldNormal);
+            Vector3 LocalSelfNormal = baseTransform.InverseTransformDirection(finalWorldNormal);
 
             float RollAngle = Mathf.Atan2(LocalSelfNormal.x, LocalSelfNormal.y) * Mathf.Rad2Deg;  // 右がプラス、左がマイナス
             float PitchAngle = Mathf.Atan2(LocalSelfNormal.z, LocalSelfNormal.y) * Mathf.Rad2Deg; // 前がプラス、後ろがマイナス

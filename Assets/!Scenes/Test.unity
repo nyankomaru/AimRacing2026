@@ -181,8 +181,11 @@ MonoBehaviour:
   TargetLayer:
     serializedVersion: 2
     m_Bits: 64
-  RayCastOffset_X: 0
-  RayCastOffset_Z: 0
+  vehicleRoot: {fileID: 1181647651}
+  FriontRightWheel: {fileID: 1451861050}
+  FriontLeftWheel: {fileID: 500295671}
+  BackRightWheel: {fileID: 392605017}
+  BackLeftWheel: {fileID: 1028059143}
 --- !u!114 &11567083
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -272,6 +275,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4979b69ae90da74eb94669abbd0cbd3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: '::'
+  TargetLayer:
+    serializedVersion: 2
+    m_Bits: 0
+  RayCastOffset_X: 0
+  RayCastOffset_Z: 0
 --- !u!1 &37941853
 GameObject:
   m_ObjectHideFlags: 0
@@ -8429,8 +8437,8 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1181647642}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.026195554, y: 0.1300338, z: 0.0033935602, w: -0.99115765}
-  m_LocalPosition: {x: 17.618, y: 0.721, z: -18.562}
+  m_LocalRotation: {x: -0.023921587, y: 0.17765607, z: -0.01120184, w: 0.98373806}
+  m_LocalPosition: {x: 2.9965315, y: 0.4781848, z: -27.075651}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 1
   m_Children:
@@ -8449,7 +8457,7 @@ Transform:
   - {fileID: 1027823702}
   - {fileID: 403229683}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: -12.885, z: 0}
+  m_LocalEulerAnglesHint: {x: -2.469, y: 380.511, z: -1.752}
 --- !u!1 &1182364310
 GameObject:
   m_ObjectHideFlags: 0
