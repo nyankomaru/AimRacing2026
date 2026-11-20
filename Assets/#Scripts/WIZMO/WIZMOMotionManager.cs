@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class MenuMotionManager : MonoBehaviour
 {
@@ -9,23 +10,52 @@ public class MenuMotionManager : MonoBehaviour
     [SerializeField] private float m_menuHeave = 1f;   // メニュー時の目標高さ
     [SerializeField] private float m_smoothTime = 2.0f; // 昇降にかかる時間（秒）
 
-    // メニュー（-1f）状態からスタート
+    [SerializeField] private float m_transitionDelay = 2.0f; // 起動時の不安定な時間をやり過ごす
+
+    private bool m_transitionComplete = false;    // メニュー（-1f）状態からスタート
     private float m_currentHeave = 0f;
     private float m_heaveVelocity = 0f;
+
+    private float m_transitionStopTime = 0f;
     private float m_currentAxis = 0f;
     private float m_axisVelocity = 0f;
 
     // インゲーム開始時の「0への復帰移動」が完了したかのフラグ
     private bool m_isInGameTransitionComplete = false;
 
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+
+        Debug.Log("ラヤマジ");
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+        Debug.Log("青田");
+    }
+
     private void Update()
     {
-        if (m_wizmoController == null) return;
+        if (m_wizmoController == null) return;       
+
+
 
         bool inGame = IsVehiclePresent();
 
         if (inGame)
         {
+
+            float bt = Mathf.Min(Time.deltaTime, 0.033f);
+
+            // 指定の時間処理しない
+            if (m_transitionStopTime < m_transitionDelay)
+            {
+                m_transitionStopTime += bt;
+                return;
+            }
+
             // ------------------------------------------
             // インゲーム時：0に向かって1度だけ復帰移動
             // ------------------------------------------
@@ -47,8 +77,7 @@ public class MenuMotionManager : MonoBehaviour
                     m_wizmoController.SetChairMotion(0f, 0f, 0f, 0f, 0f, 0f, 0.2f, 0.2f);
                     m_isInGameTransitionComplete = true;
                 }
-            }
-            // ※ TransitionComplete が true の間は SetChairMotion を呼ばず、車両側のモーション入力を阻害しません
+            }             
         }
         else
         {
@@ -75,8 +104,16 @@ public class MenuMotionManager : MonoBehaviour
         }
     }
 
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        m_transitionStopTime = 0f;
+        m_heaveVelocity = 0f;
+        m_vehicleController = null; // 古いシーンの参照をクリア
+    }
+
+
     /// <summary>
-    /// VehicleController の存在チェック（自動検索付き）
+    /// VehicleController の存在チェック
     /// </summary>
     private bool IsVehiclePresent()
     {

@@ -14,35 +14,6 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
     [SerializeField] private Transform BackRightWheel;
     [SerializeField] private Transform BackLeftWheel;
 
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float FrontRightRayCastOffset_X = 0f;
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float FrontRightRayCastOffset_Z = 0;
-
-
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float FrontLeftRayCastOffset_X = 0f;
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float FrontLeftRayCastOffset_Z = 0;
-
-
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float BackRightRayCastOffset_X = 0f;
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float BackRightRayCastOffset_Z = 0;
-
-
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float BackLeftRayCastOffset_X = 0f;
-
-    //[SerializeField, Range(-0.7f, 1.3f)]
-    //private float BackLeftRayCastOffset_Z = 0;
 
 
 
@@ -155,9 +126,9 @@ public class RoadNormalMapNormalMapReader : MonoBehaviour
             Debug.DrawRay(hit.point, finalWorldNormal * 10.0f, Color.red);
             Debug.DrawRay(hit.point, worldTangent * 0.8f, Color.blue);
 
-            Debug.Log($"【RoadNormalMapNormalMapReader】UV:{uv} | RawColor:(R:{color.r:F2}, G:{color.g:F2}, B:{color.b:F2}, A:{color.a:F2}) | LocalNormal:{localNormal} | 傾き:{angle:F2}度");
+            //Debug.Log($"【RoadNormalMapNormalMapReader】UV:{uv} | RawColor:(R:{color.r:F2}, G:{color.g:F2}, B:{color.b:F2}, A:{color.a:F2}) | LocalNormal:{localNormal} | 傾き:{angle:F2}度");
 
-            Debug.Log($"【RoadNormalMapNormalMapReader】自分に対する相対傾き:{RollAngle:F2}度 | 左右(Roll):{RollAngle:F2}度 | 前後(Pitch):{RollAngle:F2}度");
+            //Debug.Log($"【RoadNormalMapNormalMapReader】自分に対する相対傾き:{RollAngle:F2}度 | 左右(Roll):{RollAngle:F2}度 | 前後(Pitch):{RollAngle:F2}度");
 
         }
     }
