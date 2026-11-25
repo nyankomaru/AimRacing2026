@@ -871,6 +871,8 @@ public class ChairController : MonoBehaviour
             return;
         }
 
+        if (MenuMotionManager.IsMenuTransitioning) return;
+
         // WIZMOControllerから関数を呼び出して渡す
         m_wizmoController.SetChairMotion(m_roll, m_pitch, m_yaw, m_heave, m_sway, m_surge, m_speed, m_accel);
 

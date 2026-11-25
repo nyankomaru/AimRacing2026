@@ -7,124 +7,93 @@ public class MenuMotionManager : MonoBehaviour
     [SerializeField] private VehicleController m_vehicleController;
 
     [Header("Motion Settings")]
-    [SerializeField] private float m_menuHeave = 1f;   // メニュー時の目標高さ
-    [SerializeField] private float m_smoothTime = 2.0f; // 昇降にかかる時間（秒）
+    [SerializeField] private float m_menuHeave = 1f;        // メニュー時の目標高さ
+    [SerializeField] private float m_motionSpeed = 0.2f;    // WIZMO側の移動速度
+    [SerializeField] private float m_motionSmooth = 0.2f;   // WIZMO側の滑らかさ
+    [SerializeField] private float m_transitionWait = 2.0f; // インゲーム開始時の復帰待機時間
 
-    [SerializeField] private float m_transitionDelay = 2.0f; // 起動時の不安定な時間をやり過ごす
+    // 前回の状態を記憶し、状態が変わった瞬間だけ処理を切り替える
+    private bool? m_lastInGameState = null;
+    private float m_inGameTimer = 0f;
 
-    private bool m_transitionComplete = false;    // メニュー（-1f）状態からスタート
-    private float m_currentHeave = 0f;
-    private float m_heaveVelocity = 0f;
-
-    private float m_transitionStopTime = 0f;
-    private float m_currentAxis = 0f;
-    private float m_axisVelocity = 0f;
-
-    // インゲーム開始時の「0への復帰移動」が完了したかのフラグ
-    private bool m_isInGameTransitionComplete = false;
+    public static bool IsMenuTransitioning { get; private set; } = false;
 
     private void OnEnable()
     {
         SceneManager.sceneLoaded += OnSceneLoaded;
-
-        Debug.Log("ラヤマジ");
     }
 
     private void OnDisable()
     {
         SceneManager.sceneLoaded -= OnSceneLoaded;
-        Debug.Log("青田");
     }
 
-    private void Update()
+    private void Start()
     {
-        if (m_wizmoController == null) return;       
-
-
-
-        bool inGame = IsVehiclePresent();
-
-        if (inGame)
-        {
-
-            float bt = Mathf.Min(Time.deltaTime, 0.033f);
-
-            // 指定の時間処理しない
-            if (m_transitionStopTime < m_transitionDelay)
-            {
-                m_transitionStopTime += bt;
-                return;
-            }
-
-            // ------------------------------------------
-            // インゲーム時：0に向かって1度だけ復帰移動
-            // ------------------------------------------
-            if (!m_isInGameTransitionComplete)
-            {
-                m_currentHeave = Mathf.SmoothDamp(
-                    m_currentHeave,
-                    0f,
-                    ref m_heaveVelocity,
-                    m_smoothTime
-                );
-
-                m_wizmoController.SetChairMotion(0f, 0f, 0f, m_currentHeave, 0f, 0f, 0.2f, 0.2f);
-
-                // ほぼ 0 に到達したら移動完了とし、以降は車両挙動の制御に任せる
-                if (Mathf.Abs(m_currentHeave) <= 0.01f)
-                {
-                    m_currentHeave = 0f;
-                    m_wizmoController.SetChairMotion(0f, 0f, 0f, 0f, 0f, 0f, 0.2f, 0.2f);
-                    m_isInGameTransitionComplete = true;
-                }
-            }             
-        }
-        else
-        {
-            // ------------------------------------------
-            // メニュー時（またはインゲーム終了時）：-1へ移動
-            // ------------------------------------------
-            m_isInGameTransitionComplete = false; // 次回のインゲーム用にフラグをリセット
-
-            m_currentHeave = Mathf.SmoothDamp(
-                m_currentHeave,
-                m_menuHeave,
-                ref m_heaveVelocity,
-                m_smoothTime
-            );
-
-           // m_currentAxis = Mathf.SmoothDamp(
-           //    m_currentAxis,
-           //    0,
-           //    ref m_axisVelocity,
-           //    m_smoothTime
-           //);
-
-            m_wizmoController.SetChairMotion(0, 0, 0, m_currentHeave, 0, 0, 0.2f, 0.2f);
-        }
+        // 起動時に1回だけ現在の状態を確定させる
+        UpdateSceneState(forceReset: true);
     }
 
     private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
     {
-        m_transitionStopTime = 0f;
-        m_heaveVelocity = 0f;
-        m_vehicleController = null; // 古いシーンの参照をクリア
+        // マネージャーシーン自身が遅延ロードされた時の通知は無視する
+        if (scene == gameObject.scene) return;
+
+        // 別のシーンが追加・切り替えされた時だけ状態を再確認
+        UpdateSceneState(forceReset: false);
     }
 
-
-    /// <summary>
-    /// VehicleController の存在チェック
-    /// </summary>
-    private bool IsVehiclePresent()
+    private void UpdateSceneState(bool forceReset)
     {
-        if (m_vehicleController != null) return true;
-
+        if (m_vehicleController == null)
+        {
 #if UNITY_2023_1_OR_NEWER
-        m_vehicleController = FindFirstObjectByType<VehicleController>();
+            m_vehicleController = FindFirstObjectByType<VehicleController>();
 #else
-        m_vehicleController = FindObjectOfType<VehicleController>();
+            m_vehicleController = FindObjectOfType<VehicleController>();
 #endif
+        }
 
-        return m_vehicleController != null;
+        bool currentInGame = (m_vehicleController != null);
+
+        // 初回、またはメニュー と インゲームの状態が実際に切り替わった時だけタイマーをリセット
+        if (forceReset || m_lastInGameState != currentInGame)
+        {
+            m_lastInGameState = currentInGame;
+            m_inGameTimer = 0f;
+            IsMenuTransitioning = true;
+        }
+    }
+
+    private void FixedUpdate()
+    {
+        if (m_wizmoController == null || m_lastInGameState == null) return;
+
+        // 念のため、破棄されたVehicleControllerの参照が残っていたら更新
+        if (m_lastInGameState == true && m_vehicleController == null)
+        {
+            UpdateSceneState(forceReset: false);
+        }
+
+        if (m_lastInGameState == true)
+        {
+            // インゲーム時：0fへ戻す
+            if (IsMenuTransitioning)
+            {
+                m_wizmoController.SetChairMotion(0f, 0f, 0f, 0f, 0f, 0f, m_motionSpeed, m_motionSmooth);
+
+                m_inGameTimer += Time.fixedDeltaTime;
+                if (m_inGameTimer >= m_transitionWait)
+                {
+                    IsMenuTransitioning = false;
+                }
+            }
+        }
+        else
+        {
+            // メニュー時：目標高さへ移動
+            IsMenuTransitioning = true;
+            m_wizmoController.SetChairMotion(0f, 0f, 0f, m_menuHeave, 0f, 0f, m_motionSpeed, m_motionSmooth);
+        }
     }
 }
